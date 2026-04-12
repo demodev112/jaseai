@@ -19,6 +19,7 @@ const Colors = {
   text: '#FFFFFF',
   textSecondary: '#999999',
   textTertiary: '#666666',
+  textMuted: '#555555',
   textOnPrimary: '#000000',
 
   // Status colors

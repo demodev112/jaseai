@@ -4,6 +4,8 @@
  */
 
 import { create } from 'zustand';
+import { signOut as firebaseSignOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 import type { User } from '@/types';
 
 interface AuthState {
@@ -14,26 +16,25 @@ interface AuthState {
 
   // Onboarding progress
   hasCompletedOnboarding: boolean;
-  hasCompletedFirstAnalysis: boolean;
-  hasSeenPaywall: boolean;
 
   // Actions
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
   setOnboardingComplete: () => void;
-  setFirstAnalysisComplete: () => void;
-  setPaywallSeen: () => void;
+  setSubscriptionActive: (active: boolean) => void;
+  signOut: () => Promise<void>;
   reset: () => void;
+
+  // Helpers
+  hasActiveSubscription: () => boolean;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   // Initial state
   user: null,
   isLoading: true,
   isAuthenticated: false,
   hasCompletedOnboarding: false,
-  hasCompletedFirstAnalysis: false,
-  hasSeenPaywall: false,
 
   // Actions
   setUser: (user) =>
@@ -47,9 +48,32 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setOnboardingComplete: () => set({ hasCompletedOnboarding: true }),
 
-  setFirstAnalysisComplete: () => set({ hasCompletedFirstAnalysis: true }),
+  setSubscriptionActive: (active) =>
+    set((state) => ({
+      user: state.user
+        ? {
+            ...state.user,
+            subscription: {
+              ...state.user.subscription,
+              status: active ? 'active' : 'expired',
+            },
+          }
+        : null,
+    })),
 
-  setPaywallSeen: () => set({ hasSeenPaywall: true }),
+  signOut: async () => {
+    try {
+      await firebaseSignOut(auth);
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+    set({
+      user: null,
+      isLoading: false,
+      isAuthenticated: false,
+      hasCompletedOnboarding: false,
+    });
+  },
 
   reset: () =>
     set({
@@ -57,7 +81,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       isLoading: false,
       isAuthenticated: false,
       hasCompletedOnboarding: false,
-      hasCompletedFirstAnalysis: false,
-      hasSeenPaywall: false,
     }),
+
+  // Check if user has an active subscription (trial or paid)
+  hasActiveSubscription: () => {
+    const { user } = get();
+    if (!user) return false;
+    const status = user.subscription?.status;
+    return status === 'active' || status === 'trial';
+  },
 }));

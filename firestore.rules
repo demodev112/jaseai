@@ -1,0 +1,44 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Users ──────────────────────────────────────────
+    match /users/{userId} {
+      // Users can only read/write their own document
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Users can create their own document on signup
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // Users can update their own document (name, etc.)
+      // But NOT subscription or dailyUsage (those are managed by Cloud Functions)
+      allow update: if request.auth != null
+                    && request.auth.uid == userId
+                    && !request.resource.data.diff(resource.data).affectedKeys()
+                        .hasAny(['subscription', 'dailyUsage']);
+    }
+
+    // ─── Routines ───────────────────────────────────────
+    match /routines/{routineId} {
+      // Users can only access their own routines
+      allow read, write: if request.auth != null
+                         && request.auth.uid == resource.data.uid;
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.uid;
+    }
+
+    // ─── Analyses ───────────────────────────────────────
+    match /analyses/{analysisId} {
+      // Users can only read their own analyses
+      allow read: if request.auth != null
+                  && request.auth.uid == resource.data.uid;
+      // Only Cloud Functions can create/update analyses
+      // (via Admin SDK which bypasses these rules)
+      allow write: if false;
+    }
+
+    // ─── Default deny ───────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -9,27 +9,33 @@
  */
 
 import { initializeApp, getApps } from 'firebase/app';
-// @ts-ignore — getReactNativePersistence exists at runtime in RN environment
-import { initializeAuth, getAuth, getReactNativePersistence } from 'firebase/auth';
+import {
+  initializeAuth,
+  getAuth,
+  // @ts-ignore — getReactNativePersistence exists at runtime in RN environment
+  getReactNativePersistence,
+  type Auth,
+} from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getFunctions } from 'firebase/functions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
-  apiKey: 'YOUR_API_KEY',
-  authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
-  projectId: 'YOUR_PROJECT_ID',
-  storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
-  messagingSenderId: 'YOUR_SENDER_ID',
-  appId: 'YOUR_APP_ID',
-  measurementId: 'YOUR_MEASUREMENT_ID',
+  apiKey: 'AIzaSyDF7WgA-hK7mKRBubk6J73XW1q0Oyn3d34',
+  authDomain: 'formai-493012.firebaseapp.com',
+  projectId: 'formai-493012',
+  storageBucket: 'formai-493012.firebasestorage.app',
+  messagingSenderId: '10201445254',
+  appId: '1:10201445254:web:0b61017f4186d82c59b207',
+  measurementId: 'G-ZDEFLJTDYB',
 };
 
 // Initialize Firebase (prevent re-initialization in dev mode)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
 // Use React Native persistence for auth (keeps user logged in across app restarts)
-let auth;
+let auth: Auth;
 try {
   auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage),
@@ -41,4 +47,5 @@ try {
 export { auth };
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+export const functions = getFunctions(app, 'asia-northeast3');
 export default app;

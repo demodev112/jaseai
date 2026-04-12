@@ -1,14 +1,112 @@
+import { useEffect } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Redirect } from 'expo-router';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
+import { useAuthStore } from '@/stores/authStore';
+import Colors from '@/constants/Colors';
+import type { User } from '@/types';
 
 /**
- * Entry point: decides whether to show onboarding or main app.
- * For now, always redirect to tabs (auth will be added in Phase 5).
+ * Root Entry Point
+ *
+ * Navigation decision tree:
+ * 1. Not authenticated → Onboarding
+ * 2. Authenticated, no username → Name Setup
+ * 3. Authenticated, no routine → First Routine
+ * 4. Authenticated, onboarding complete → Main App
+ *
+ * Paywall is NOT shown here. It is triggered when the user
+ * attempts their first analysis (in the analyze/session screens)
+ * if they don't have an active subscription.
  */
 export default function Index() {
-  // TODO: Check auth state and onboarding completion
-  // const { user, hasCompletedOnboarding } = useAuthStore();
-  // if (!user) return <Redirect href="/(auth)/onboarding" />;
-  // if (!hasCompletedOnboarding) return <Redirect href="/(auth)/first-routine" />;
+  const {
+    user,
+    isLoading,
+    isAuthenticated,
+    hasCompletedOnboarding,
+    setUser,
+    setLoading,
+    setOnboardingComplete,
+  } = useAuthStore();
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // User is signed in — fetch their Firestore document
+        try {
+          const userRef = doc(db, 'users', firebaseUser.uid);
+          const userSnap = await getDoc(userRef);
+
+          if (userSnap.exists()) {
+            const userData = userSnap.data() as User;
+            setUser(userData);
+
+            // Check onboarding progress
+            if (userData.username && userData.username.length > 0) {
+              if (userData.stats.routineCount > 0) {
+                setOnboardingComplete();
+              }
+            }
+          } else {
+            // User doc doesn't exist yet (just signed up)
+            setUser({
+              uid: firebaseUser.uid,
+              username: '',
+              stats: { analysesCompleted: 0, routineCount: 0 },
+              subscription: { status: 'trial' },
+              dailyUsage: { date: '', count: 0 },
+              createdAt: new Date(),
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          setUser(null);
+        }
+      } else {
+        // User is not signed in
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Show loading spinner while checking auth state
+  if (isLoading) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
+  // Decision tree
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/onboarding" />;
+  }
+
+  if (!user?.username || user.username.length === 0) {
+    return <Redirect href="/(auth)/name-setup" />;
+  }
+
+  if (!hasCompletedOnboarding) {
+    return <Redirect href="/(auth)/first-routine" />;
+  }
+
+  // Onboarding complete — go to main app
+  // Paywall is handled at the point of analysis, not here
   return <Redirect href="/(tabs)/home" />;
 }
+
+const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+  },
+});
