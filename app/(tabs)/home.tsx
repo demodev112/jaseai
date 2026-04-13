@@ -34,7 +34,10 @@ export default function HomeScreen() {
   const [fetchError, setFetchError] = useState(false);
 
   const fetchAnalyses = useCallback(async () => {
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      setIsLoading(false);
+      return;
+    }
     setFetchError(false);
     try {
       const analyses = await getRecentAnalyses(user.uid, 5);

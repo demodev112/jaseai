@@ -24,7 +24,10 @@ export default function RoutinesListScreen() {
   const [fetchError, setFetchError] = useState(false);
 
   const fetchRoutines = useCallback(async () => {
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      setIsLoading(false);
+      return;
+    }
     setFetchError(false);
     try {
       const data = await getRoutines(user.uid);

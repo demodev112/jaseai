@@ -41,7 +41,7 @@ export default function Index() {
           const userSnap = await getDoc(userRef);
 
           if (userSnap.exists()) {
-            const userData = userSnap.data() as User;
+            const userData = { ...userSnap.data(), uid: firebaseUser.uid } as User;
             setUser(userData);
 
             // Check onboarding progress

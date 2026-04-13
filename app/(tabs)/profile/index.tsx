@@ -22,7 +22,10 @@ export default function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
 
   const loadData = async () => {
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      setIsLoading(false);
+      return;
+    }
     try {
       const [allAnalyses, routines] = await Promise.all([
         getUserAnalyses(user.uid, 100),
