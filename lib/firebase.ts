@@ -16,7 +16,7 @@ import {
   getReactNativePersistence,
   type Auth,
 } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -44,8 +44,19 @@ try {
   auth = getAuth(app);
 }
 
-export { auth };
-export const db = getFirestore(app);
+// Initialize Firestore with long polling for React Native compatibility
+// This prevents getDocs from hanging due to WebSocket/gRPC issues in RN
+let db;
+try {
+  db = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+  });
+} catch {
+  // If already initialized (e.g., hot reload), get the existing instance
+  db = getFirestore(app);
+}
+
+export { auth, db };
 export const storage = getStorage(app);
 export const functions = getFunctions(app, 'asia-northeast3');
 export default app;

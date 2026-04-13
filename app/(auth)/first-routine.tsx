@@ -7,11 +7,14 @@ import {
   ScrollView,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Colors from '@/constants/Colors';
 import { EXERCISE_DATABASE, ALL_EXERCISES } from '@/constants/Exercises';
+import { useAuthStore } from '@/stores/authStore';
+import { createRoutine } from '@/lib/firestore';
 
 // Popular exercises shown as quick-add chips
 const POPULAR_EXERCISES = [
@@ -21,10 +24,12 @@ const POPULAR_EXERCISES = [
 ];
 
 export default function FirstRoutineScreen() {
+  const { user, setOnboardingComplete } = useAuthStore();
   const [routineName, setRoutineName] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const toggleExercise = (exercise: string) => {
     setSelectedExercises((prev) =>
@@ -46,21 +51,39 @@ export default function FirstRoutineScreen() {
       return;
     }
 
+    if (!user?.uid) {
+      Alert.alert('오류', '로그인 정보를 찾을 수 없습니다.');
+      return;
+    }
+
     const name = routineName.trim() || '나의 루틴';
 
+    setIsSaving(true);
     try {
-      // TODO: Save routine to Firestore
-      // const routineRef = doc(collection(db, 'users', uid, 'routines'));
-      // await setDoc(routineRef, { name, exercises: selectedExercises, ... });
+      // Save routine to Firestore
+      const exercises = selectedExercises.map((exerciseName) => ({
+        name: exerciseName,
+        sets: 3,
+        reps: 10,
+      }));
+      await createRoutine(user.uid, name, exercises);
+
+      // Mark onboarding as complete
+      setOnboardingComplete();
 
       // Navigate to main app
       router.replace('/(tabs)/home');
     } catch (error) {
-      Alert.alert('오류', '루틴 저장 중 문제가 발생했습니다.');
+      console.error('Failed to save routine:', error);
+      Alert.alert('오류', '루틴 저장 중 문제가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleSkip = () => {
+    // Even if skipping, mark onboarding as complete so user isn't stuck
+    setOnboardingComplete();
     router.replace('/(tabs)/home');
   };
 
@@ -215,21 +238,25 @@ export default function FirstRoutineScreen() {
         <TouchableOpacity
           style={[
             styles.saveButton,
-            selectedExercises.length === 0 && styles.saveButtonDisabled,
+            (selectedExercises.length === 0 || isSaving) && styles.saveButtonDisabled,
           ]}
           onPress={handleSave}
-          disabled={selectedExercises.length === 0}
+          disabled={selectedExercises.length === 0 || isSaving}
         >
-          <Text
-            style={[
-              styles.saveButtonText,
-              selectedExercises.length === 0 && styles.saveButtonTextDisabled,
-            ]}
-          >
-            루틴 저장하고 시작하기
-          </Text>
+          {isSaving ? (
+            <ActivityIndicator color={Colors.background} />
+          ) : (
+            <Text
+              style={[
+                styles.saveButtonText,
+                selectedExercises.length === 0 && styles.saveButtonTextDisabled,
+              ]}
+            >
+              루틴 저장하고 시작하기
+            </Text>
+          )}
         </TouchableOpacity>
-        <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
+        <TouchableOpacity style={styles.skipButton} onPress={handleSkip} disabled={isSaving}>
           <Text style={styles.skipButtonText}>나중에 만들기</Text>
         </TouchableOpacity>
       </View>

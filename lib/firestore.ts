@@ -22,9 +22,25 @@ import {
   serverTimestamp,
   Timestamp,
   type Unsubscribe,
+  type Query,
+  type DocumentData,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { User, Routine, RoutineExercise, Analysis } from '@/types';
+
+// ─── Timeout wrapper ───────────────────────────────────
+// Prevents getDocs from hanging forever in React Native
+function getDocsWithTimeout<T extends DocumentData>(
+  q: Query<T>,
+  timeoutMs: number = 10000,
+) {
+  return Promise.race([
+    getDocs(q),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Firestore query timed out after ${timeoutMs}ms`)), timeoutMs),
+    ),
+  ]);
+}
 
 // ─── Users ──────────────────────────────────────────────
 
@@ -112,7 +128,7 @@ export async function getRoutines(uid: string): Promise<Routine[]> {
     where('uid', '==', uid),
     orderBy('updatedAt', 'desc'),
   );
-  const snap = await getDocs(q);
+  const snap = await getDocsWithTimeout(q);
   return snap.docs.map((d) => {
     const data = d.data();
     return {
@@ -165,7 +181,7 @@ export async function getRecentAnalyses(
     orderBy('createdAt', 'desc'),
     limit(count),
   );
-  const snap = await getDocs(q);
+  const snap = await getDocsWithTimeout(q);
   return snap.docs.map((d) => {
     const data = d.data();
     return {
@@ -211,7 +227,7 @@ export function subscribeToAnalysis(
 
 export async function deleteUserData(uid: string): Promise<void> {
   // Delete all routines
-  const routinesSnap = await getDocs(
+  const routinesSnap = await getDocsWithTimeout(
     query(collection(db, 'routines'), where('uid', '==', uid)),
   );
   for (const routineDoc of routinesSnap.docs) {
@@ -219,7 +235,7 @@ export async function deleteUserData(uid: string): Promise<void> {
   }
 
   // Delete all analyses
-  const analysesSnap = await getDocs(
+  const analysesSnap = await getDocsWithTimeout(
     query(collection(db, 'analyses'), where('uid', '==', uid)),
   );
   for (const analysisDoc of analysesSnap.docs) {
