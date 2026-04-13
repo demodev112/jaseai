@@ -209,12 +209,6 @@ export function subscribeToAnalysis(
 
 // ─── Account Deletion ───────────────────────────────────
 
-// ─── Aliases for screen imports ─────────────────────────
-export const getUserAnalyses = getRecentAnalyses;
-export const getUserRoutines = getRoutines;
-export const getAnalysis = getAnalysisById;
-export const deleteUserAccount = deleteUserData;
-
 export async function deleteUserData(uid: string): Promise<void> {
   // Delete all routines
   const routinesSnap = await getDocs(
@@ -235,3 +229,9 @@ export async function deleteUserData(uid: string): Promise<void> {
   // Delete user document
   await deleteDoc(doc(db, 'users', uid));
 }
+
+// ─── Aliases for screen imports ─────────────────────────
+export const getUserAnalyses = getRecentAnalyses;
+export const getUserRoutines = getRoutines;
+export const getAnalysis = getAnalysisById;
+export const deleteUserAccount = deleteUserData;

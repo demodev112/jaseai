@@ -44,9 +44,8 @@ export interface Routine {
 export interface Improvement {
   issue: string;
   timestamp: string; // e.g., '0:03'
-  correction: string;
-  detail?: string;
-  severity?: '주의' | '경미';
+  detail: string;
+  severity: '주의' | '경미';
 }
 
 export interface AnalysisFeedback {
@@ -58,7 +57,7 @@ export interface AnalysisFeedback {
   summary: string;
   goodPoints: string[];
   improvements: Improvement[];
-  injuryRisk: 'low' | 'medium' | 'high';
+  injuryRisk: '낮음' | '보통' | '높음';
   overallAdvice: string;
 }
 

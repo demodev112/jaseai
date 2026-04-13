@@ -1,28 +1,40 @@
 {
   "expo": {
-    "name": "jaseai",
+    "name": "자세AI",
     "slug": "jaseai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "jaseai",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0A0A0A"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.jaseai.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "운동 자세를 촬영하여 AI 분석을 받기 위해 카메라 접근이 필요합니다.",
+        "NSPhotoLibraryUsageDescription": "운동 영상을 선택하여 AI 분석을 받기 위해 사진 라이브러리 접근이 필요합니다.",
+        "NSMicrophoneUsageDescription": "운동 영상 촬영 시 오디오 녹음을 위해 마이크 접근이 필요합니다."
+      }
     },
     "android": {
+      "package": "com.jaseai.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0A0A0A"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -31,10 +43,22 @@
     },
     "plugins": [
       "expo-router",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "운동 영상을 선택하여 AI 분석을 받기 위해 사진 라이브러리 접근이 필요합니다.",
+          "cameraPermission": "운동 자세를 촬영하여 AI 분석을 받기 위해 카메라 접근이 필요합니다."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": ""
+      }
     }
   }
 }
