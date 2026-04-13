@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '@/constants/Colors';
+import Colors from '@/constants/Colors';
 
 export default function TermsScreen() {
   const router = useRouter();
@@ -11,7 +11,7 @@ export default function TermsScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={28} color={COLORS.text} />
+          <Ionicons name="chevron-back" size={28} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>이용약관</Text>
         <View style={{ width: 28 }} />
@@ -85,7 +85,7 @@ export default function TermsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: Colors.border,
   },
   backButton: {
     padding: 4,
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.text,
+    color: Colors.text,
   },
   content: {
     flex: 1,
@@ -114,25 +114,25 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: COLORS.text,
+    color: Colors.text,
     marginBottom: 8,
   },
   date: {
     fontSize: 14,
-    color: COLORS.textSecondary,
+    color: Colors.textSecondary,
     marginBottom: 32,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COLORS.text,
+    color: Colors.text,
     marginTop: 24,
     marginBottom: 12,
   },
   paragraph: {
     fontSize: 15,
     lineHeight: 24,
-    color: COLORS.textSecondary,
+    color: Colors.textSecondary,
   },
   footer: {
     height: 40,
