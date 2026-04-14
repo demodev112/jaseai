@@ -14,6 +14,7 @@ import Colors from '@/constants/Colors';
 import { EXERCISE_DATABASE, ALL_EXERCISES } from '@/constants/Exercises';
 import { useAuthStore } from '@/stores/authStore';
 import { createRoutine, updateRoutine } from '@/lib/firestore';
+import { auth } from '@/lib/firebase';
 import type { RoutineExercise } from '@/types';
 
 export default function RoutineCreateScreen() {
@@ -24,6 +25,7 @@ export default function RoutineCreateScreen() {
   }>();
 
   const { user } = useAuthStore();
+  const uid = user?.uid || auth.currentUser?.uid;
   const isEditing = !!params.routineId;
   const [isSaving, setIsSaving] = useState(false);
 
@@ -73,7 +75,10 @@ export default function RoutineCreateScreen() {
       Alert.alert('루틴 이름을 입력해주세요');
       return;
     }
-    if (!user?.uid) return;
+    if (!uid) {
+      Alert.alert('오류', '로그인 정보를 찾을 수 없습니다.');
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -88,7 +93,7 @@ export default function RoutineCreateScreen() {
           exercises,
         });
       } else {
-        await createRoutine(user.uid, routineName.trim(), exercises);
+        await createRoutine(uid, routineName.trim(), exercises);
       }
       router.back();
     } catch (error) {

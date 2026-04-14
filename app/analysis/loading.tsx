@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import Colors from '@/constants/Colors';
 import { useAuthStore } from '@/stores/authStore';
+import { auth } from '@/lib/firebase';
 import { submitAnalysis, type UploadProgress } from '@/lib/analysis';
 import { getUserFriendlyError, isNetworkError } from '@/lib/errors';
 
@@ -17,6 +18,7 @@ export default function AnalysisLoadingScreen() {
   }>();
 
   const { user } = useAuthStore();
+  const uid = user?.uid || auth.currentUser?.uid;
   const [statusMessage, setStatusMessage] = useState('준비 중...');
   const spinAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -35,7 +37,7 @@ export default function AnalysisLoadingScreen() {
     hasStarted.current = true;
 
     const runAnalysis = async () => {
-      if (!user?.uid || !params.videoUri || !params.exerciseName) {
+      if (!uid || !params.videoUri || !params.exerciseName) {
         Alert.alert('오류', '필요한 정보가 없습니다.');
         router.back();
         return;
@@ -43,7 +45,7 @@ export default function AnalysisLoadingScreen() {
 
       try {
         const result = await submitAnalysis(
-          user.uid,
+          uid,
           {
             exerciseName: params.exerciseName,
             videoUri: params.videoUri,

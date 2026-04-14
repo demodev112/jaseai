@@ -12,24 +12,26 @@ import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import Colors from '@/constants/Colors';
 import { useAuthStore } from '@/stores/authStore';
+import { auth } from '@/lib/firebase';
 import { getUserAnalyses, getUserRoutines } from '@/lib/firestore';
 import type { Analysis } from '@/types';
 
 export default function ProfileScreen() {
   const { user } = useAuthStore();
+  const uid = user?.uid || auth.currentUser?.uid;
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [totalRoutines, setTotalRoutines] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadData = async () => {
-    if (!user?.uid) {
+    if (!uid) {
       setIsLoading(false);
       return;
     }
     try {
       const [allAnalyses, routines] = await Promise.all([
-        getUserAnalyses(user.uid, 100),
-        getUserRoutines(user.uid),
+        getUserAnalyses(uid, 100),
+        getUserRoutines(uid),
       ]);
       setAnalyses(allAnalyses);
       setTotalRoutines(routines.length);
@@ -43,7 +45,7 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [user?.uid])
+    }, [uid])
   );
 
   const totalAnalyses = analyses.length;

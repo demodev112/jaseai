@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import Colors from '@/constants/Colors';
 import { useAuthStore } from '@/stores/authStore';
+import { auth } from '@/lib/firebase';
 import { getAnalysis } from '@/lib/firestore';
 import type { Analysis, AnalysisFeedback } from '@/types';
 
@@ -36,12 +37,13 @@ export default function AnalysisFeedbackScreen() {
   }>();
 
   const { user } = useAuthStore();
+  const uid = user?.uid || auth.currentUser?.uid;
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchAnalysis = async () => {
-      if (!user?.uid || !params.analysisId) return;
+      if (!uid || !params.analysisId) return;
       try {
         const data = await getAnalysis(params.analysisId);
         setAnalysis(data);
@@ -52,7 +54,7 @@ export default function AnalysisFeedbackScreen() {
       }
     };
     fetchAnalysis();
-  }, [user?.uid, params.analysisId]);
+  }, [uid, params.analysisId]);
 
   const handleDone = () => {
     if (params.source === 'routine' && params.routineId) {

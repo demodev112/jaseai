@@ -64,10 +64,9 @@ export default function FirstRoutineScreen() {
     setIsSaving(true);
     try {
       // Save routine to Firestore
-      const exercises = selectedExercises.map((exerciseName) => ({
+      const exercises = selectedExercises.map((exerciseName, idx) => ({
+        order: idx,
         name: exerciseName,
-        sets: 3,
-        reps: 10,
       }));
       await createRoutine(uid, name, exercises);
 

@@ -13,24 +13,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import Colors from '@/constants/Colors';
 import { useAuthStore } from '@/stores/authStore';
+import { auth } from '@/lib/firebase';
 import { getRoutines, deleteRoutine } from '@/lib/firestore';
 import type { Routine } from '@/types';
 
 export default function RoutinesListScreen() {
   const { user } = useAuthStore();
+  const uid = user?.uid || auth.currentUser?.uid;
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
 
   const fetchRoutines = useCallback(async () => {
-    if (!user?.uid) {
+    if (!uid) {
       setIsLoading(false);
       return;
     }
     setFetchError(false);
     try {
-      const data = await getRoutines(user.uid);
+      const data = await getRoutines(uid);
       setRoutines(data);
     } catch (error) {
       console.error('Failed to fetch routines:', error);
@@ -38,7 +40,7 @@ export default function RoutinesListScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.uid]);
+  }, [uid]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -86,8 +88,8 @@ export default function RoutinesListScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            if (user?.uid) {
-              await deleteRoutine(user.uid, routine.routineId);
+            if (uid) {
+              await deleteRoutine(uid, routine.routineId);
               setRoutines((prev) => prev.filter((r) => r.routineId !== routine.routineId));
             }
           } catch (error) {

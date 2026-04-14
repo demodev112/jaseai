@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import Colors from '@/constants/Colors';
 import { useAuthStore } from '@/stores/authStore';
+import { auth } from '@/lib/firebase';
 import { getRecentAnalyses } from '@/lib/firestore';
 import type { Analysis } from '@/types';
 
@@ -28,19 +29,20 @@ function formatDate(date: Date): string {
 
 export default function HomeScreen() {
   const { user } = useAuthStore();
+  const uid = user?.uid || auth.currentUser?.uid;
   const [recentAnalyses, setRecentAnalyses] = useState<Analysis[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
 
   const fetchAnalyses = useCallback(async () => {
-    if (!user?.uid) {
+    if (!uid) {
       setIsLoading(false);
       return;
     }
     setFetchError(false);
     try {
-      const analyses = await getRecentAnalyses(user.uid, 5);
+      const analyses = await getRecentAnalyses(uid, 5);
       setRecentAnalyses(analyses);
     } catch (error) {
       console.error('Failed to fetch analyses:', error);
@@ -48,7 +50,7 @@ export default function HomeScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.uid]);
+  }, [uid]);
 
   // Refresh when screen comes into focus
   useFocusEffect(
