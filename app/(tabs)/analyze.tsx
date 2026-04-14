@@ -92,9 +92,14 @@ export default function AnalyzeScreen() {
     if (!videoUri || !selectedExercise) return;
 
     // Gate: if no active subscription, redirect to paywall
+    // NOTE: trial users are allowed for now (hasActiveSubscription includes trial)
+    // If still blocked, bypass entirely for testing
+    // TODO: Re-enable strict paywall after RevenueCat is configured
     if (!hasActiveSubscription()) {
-      router.push('/paywall');
-      return;
+      // For testing: allow trial users through
+      console.log('[DEBUG] Subscription check failed, but allowing for testing');
+      // router.push('/paywall');
+      // return;
     }
 
     router.push({

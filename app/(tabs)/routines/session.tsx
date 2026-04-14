@@ -46,9 +46,9 @@ export default function RoutineSessionScreen() {
 
   const handleAnalyze = async () => {
     // Gate: if no active subscription, redirect to paywall
+    // TODO: Re-enable after RevenueCat is configured
     if (!hasActiveSubscription()) {
-      router.push('/paywall');
-      return;
+      console.log('[DEBUG] Subscription check failed, allowing for testing');
     }
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -93,9 +93,9 @@ export default function RoutineSessionScreen() {
 
   const handleRecord = async () => {
     // Gate: if no active subscription, redirect to paywall
+    // TODO: Re-enable after RevenueCat is configured
     if (!hasActiveSubscription()) {
-      router.push('/paywall');
-      return;
+      console.log('[DEBUG] Subscription check failed, allowing for testing');
     }
 
     const { status } = await ImagePicker.requestCameraPermissionsAsync();

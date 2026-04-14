@@ -15,6 +15,7 @@ import Colors from '@/constants/Colors';
 import { EXERCISE_DATABASE, ALL_EXERCISES } from '@/constants/Exercises';
 import { useAuthStore } from '@/stores/authStore';
 import { createRoutine } from '@/lib/firestore';
+import { auth } from '@/lib/firebase';
 
 // Popular exercises shown as quick-add chips
 const POPULAR_EXERCISES = [
@@ -25,6 +26,8 @@ const POPULAR_EXERCISES = [
 
 export default function FirstRoutineScreen() {
   const { user, setOnboardingComplete } = useAuthStore();
+  // Get uid from Firebase Auth directly as fallback (auth store may not be fully hydrated during onboarding)
+  const uid = user?.uid || auth.currentUser?.uid;
   const [routineName, setRoutineName] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,8 +54,8 @@ export default function FirstRoutineScreen() {
       return;
     }
 
-    if (!user?.uid) {
-      Alert.alert('오류', '로그인 정보를 찾을 수 없습니다.');
+    if (!uid) {
+      Alert.alert('오류', '로그인 정보를 찾을 수 없습니다. 앱을 다시 시작해주세요.');
       return;
     }
 
@@ -66,7 +69,7 @@ export default function FirstRoutineScreen() {
         sets: 3,
         reps: 10,
       }));
-      await createRoutine(user.uid, name, exercises);
+      await createRoutine(uid, name, exercises);
 
       // Mark onboarding as complete
       setOnboardingComplete();

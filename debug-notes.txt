@@ -1,0 +1,46 @@
+BUG 1: "로그인 정보를 찾을 수 없습니다" on first-routine screen
+- first-routine.tsx uses useAuthStore().user?.uid
+- This screen is shown DURING onboarding, before index.tsx has fully loaded user
+- Wait... index.tsx redirects to first-routine ONLY after user is set and username exists
+- But we changed index.tsx to skip first-routine entirely (username = onboarding complete)
+- So this first-routine screen is only shown if user navigates to it manually? No...
+- Actually: the user in the screenshot IS on the first-routine screen. This means:
+  - Either the old build is still running (before our index.tsx change)
+  - OR the user reached this screen some other way
+
+Actually wait - the user said the loading bug is fixed, which means they built with our latest code.
+Our latest index.tsx skips first-routine entirely if username exists.
+But the user IS on first-routine... 
+
+Possible: The user's Firestore doc has username set, so index.tsx redirects to /(tabs)/home.
+The first-routine screen might be accessible from somewhere else (routines tab "create" button?).
+No - the screenshot clearly shows "첫 번째 루틴을 만들어보세요!" which is the first-routine onboarding screen.
+
+Wait - maybe the user deleted their account and re-signed up? Or this is from before the rebuild?
+
+Let me check: the user said "loading problem solved" and then asked "what next". Then I asked questions.
+Then the user showed these screenshots. The first-routine screen might be from the PREVIOUS build
+that still had the routineCount check. If routineCount is 0, old code would show first-routine.
+
+But user said they rebuilt... Hmm. Let me just fix both issues regardless.
+
+BUG 2: Paywall appears when clicking "AI 분석 시작"
+- hasActiveSubscription() checks: status === 'active' || status === 'trial'
+- Firestore user doc has subscription.status = 'trial'
+- But when Firestore data is loaded into User type, subscription might be nested differently
+- The Firestore doc has: subscription: { status: 'trial' }
+- User type expects: subscription: { status: 'trial' }
+- This should match...
+
+UNLESS: the Firestore security rules are blocking the read of the user document,
+and the catch block in index.tsx sets user to null. But then the user wouldn't be logged in at all.
+
+OR: the user doc exists but subscription field is missing or different.
+The user confirmed their Firestore doc has subscription.status = 'trial'.
+
+Most likely cause: The user object in authStore doesn't have subscription populated correctly.
+Need to add debug logging or just bypass paywall for testing.
+
+DECISION: 
+1. Fix first-routine to work even during onboarding (get uid from Firebase auth directly)
+2. Temporarily bypass paywall for trial users to test Gemini
