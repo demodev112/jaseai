@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,15 +7,25 @@ import {
   ScrollView,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Colors from '@/constants/Colors';
 import { EXERCISE_DATABASE, ALL_EXERCISES } from '@/constants/Exercises';
 import { useAuthStore } from '@/stores/authStore';
+import { getRecentAnalyses } from '@/lib/firestore';
+import { auth } from '@/lib/firebase';
+import type { Analysis } from '@/types';
 
 type Step = 'exercise' | 'video';
+
+function getScoreColor(score: number): string {
+  if (score >= 8) return Colors.scoreHigh;
+  if (score >= 5) return Colors.scoreMedium;
+  return Colors.scoreLow;
+}
 
 export default function AnalyzeScreen() {
   const [step, setStep] = useState<Step>('exercise');
@@ -24,6 +34,32 @@ export default function AnalyzeScreen() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(0);
+  const [recentAnalyses, setRecentAnalyses] = useState<Analysis[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+
+  const { user, hasActiveSubscription } = useAuthStore();
+  const uid = user?.uid || auth.currentUser?.uid;
+
+  // Fetch recent analyses when screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      const loadRecent = async () => {
+        if (!uid) {
+          setIsLoadingHistory(false);
+          return;
+        }
+        try {
+          const analyses = await getRecentAnalyses(uid, 5);
+          setRecentAnalyses(analyses);
+        } catch (error) {
+          console.error('Failed to load recent analyses:', error);
+        } finally {
+          setIsLoadingHistory(false);
+        }
+      };
+      loadRecent();
+    }, [uid])
+  );
 
   const filteredExercises = searchQuery.trim()
     ? ALL_EXERCISES.filter((e) => e.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -86,20 +122,14 @@ export default function AnalyzeScreen() {
     }
   };
 
-  const { hasActiveSubscription } = useAuthStore();
-
   const handleSubmit = () => {
     if (!videoUri || !selectedExercise) return;
 
     // Gate: if no active subscription, redirect to paywall
     // NOTE: trial users are allowed for now (hasActiveSubscription includes trial)
-    // If still blocked, bypass entirely for testing
     // TODO: Re-enable strict paywall after RevenueCat is configured
     if (!hasActiveSubscription()) {
-      // For testing: allow trial users through
       console.log('[DEBUG] Subscription check failed, but allowing for testing');
-      // router.push('/paywall');
-      // return;
     }
 
     router.push({
@@ -162,6 +192,49 @@ export default function AnalyzeScreen() {
               <TouchableOpacity style={styles.addCustomButton} onPress={() => selectExercise(searchQuery.trim())}>
                 <Text style={styles.addCustomText}>"{searchQuery.trim()}" 으로 분석하기</Text>
               </TouchableOpacity>
+            </View>
+          )}
+
+          {/* ── 최근 분석 기록 ── */}
+          <View style={styles.historyDivider} />
+          <Text style={styles.historyTitle}>최근 분석 기록</Text>
+          {isLoadingHistory ? (
+            <ActivityIndicator color={Colors.textMuted} style={{ marginTop: 20 }} />
+          ) : recentAnalyses.length === 0 ? (
+            <View style={styles.historyEmpty}>
+              <Text style={styles.historyEmptyIcon}>📊</Text>
+              <Text style={styles.historyEmptyTitle}>아직 분석 기록이 없어요</Text>
+              <Text style={styles.historyEmptySubtitle}>운동을 선택하고 첫 AI 분석을 시작해보세요!</Text>
+            </View>
+          ) : (
+            <View style={styles.historyList}>
+              {recentAnalyses.map((analysis) => (
+                <TouchableOpacity
+                  key={analysis.analysisId}
+                  style={styles.historyItem}
+                  onPress={() => router.push({
+                    pathname: '/analysis/feedback',
+                    params: { analysisId: analysis.analysisId },
+                  })}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.historyItemLeft}>
+                    <Text style={styles.historyExerciseName}>{analysis.exerciseName}</Text>
+                    <Text style={styles.historyDate}>
+                      {analysis.createdAt instanceof Date
+                        ? analysis.createdAt.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+                        : ''}
+                    </Text>
+                  </View>
+                  {analysis.feedback?.overallScore != null && (
+                    <View style={[styles.historyScoreBadge, { backgroundColor: getScoreColor(analysis.feedback.overallScore) + '20' }]}>
+                      <Text style={[styles.historyScore, { color: getScoreColor(analysis.feedback.overallScore) }]}>
+                        {analysis.feedback.overallScore}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
             </View>
           )}
         </ScrollView>
@@ -248,6 +321,21 @@ const styles = StyleSheet.create({
   noResultsText: { fontSize: 14, color: Colors.textMuted, marginBottom: 12 },
   addCustomButton: { backgroundColor: Colors.primary + '20', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
   addCustomText: { fontSize: 14, color: Colors.primary, fontWeight: '500' },
+  // ── History section ──
+  historyDivider: { height: 1, backgroundColor: Colors.border, marginTop: 24, marginBottom: 20 },
+  historyTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, marginBottom: 16 },
+  historyEmpty: { backgroundColor: Colors.backgroundSecondary, borderRadius: 16, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
+  historyEmptyIcon: { fontSize: 36, marginBottom: 12 },
+  historyEmptyTitle: { fontSize: 15, fontWeight: '600', color: Colors.text, marginBottom: 4 },
+  historyEmptySubtitle: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center' },
+  historyList: { gap: 8 },
+  historyItem: { backgroundColor: Colors.card, borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: Colors.border },
+  historyItemLeft: { flex: 1 },
+  historyExerciseName: { fontSize: 15, fontWeight: '600', color: Colors.text, marginBottom: 2 },
+  historyDate: { fontSize: 12, color: Colors.textMuted },
+  historyScoreBadge: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  historyScore: { fontSize: 16, fontWeight: '700' },
+  // ── Video picker styles ──
   tipCard: { backgroundColor: Colors.backgroundSecondary, borderRadius: 12, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: Colors.border },
   tipTitle: { fontSize: 15, fontWeight: '600', color: Colors.text, marginBottom: 8 },
   tipText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 22 },
