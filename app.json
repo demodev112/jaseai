@@ -17,6 +17,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.jaseai.app",
       "usesAppleSignIn": true,
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSCameraUsageDescription": "운동 자세를 촬영하여 AI 분석을 받기 위해 카메라 접근이 필요합니다.",
         "NSPhotoLibraryUsageDescription": "운동 영상을 선택하여 AI 분석을 받기 위해 사진 라이브러리 접근이 필요합니다.",
