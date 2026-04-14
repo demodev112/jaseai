@@ -10,10 +10,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/Colors';
 import { useAuthStore } from '@/stores/authStore';
-import { getAnalysisById } from '@/lib/firestore';
+import { auth } from '@/lib/firebase';
+import { getLatestRoutineAnalysis } from '@/lib/firestore';
 
 type ExerciseStatus = 'pending' | 'recording' | 'analyzed' | 'skipped';
 
@@ -56,70 +56,47 @@ export default function RoutineSessionScreen() {
   const progress = exercises.filter((e) => e.status !== 'pending' && e.status !== 'recording').length;
   const totalExercises = exercises.length;
 
-  const { hasActiveSubscription } = useAuthStore();
+  const { user, hasActiveSubscription } = useAuthStore();
+  const uid = user?.uid || auth.currentUser?.uid;
 
-  // ── Bug 3 fix: when screen regains focus, check AsyncStorage for completed analysis ──
+  // ── Bug 3 fix: on focus, query Firestore for latest completed analysis for this routine ──
   useFocusEffect(
     useCallback(() => {
-      const checkPendingAnalysis = async () => {
+      const checkForResult = async () => {
+        if (!uid || !params.routineId) return;
+
+        // Only check if there's an exercise currently in 'recording' state
+        const recordingIdx = exercises.findIndex((e) => e.status === 'recording');
+        if (recordingIdx === -1) return;
+
         try {
-          const raw = await AsyncStorage.getItem('pending_routine_analysis');
-          if (!raw) return;
+          const analysis = await getLatestRoutineAnalysis(uid, params.routineId);
+          if (!analysis || !analysis.feedback) return;
 
-          // Remove immediately to prevent duplicate processing
-          await AsyncStorage.removeItem('pending_routine_analysis');
-
-          const { analysisId, sessionIndex } = JSON.parse(raw) as {
-            analysisId: string;
-            sessionIndex: number;
-          };
-
-          if (!analysisId || sessionIndex == null) return;
-
-          // Fetch the real analysis result from Firestore
-          const analysis = await getAnalysisById(analysisId);
+          // Match by exercise name to be safe
+          const exerciseName = exercises[recordingIdx].name;
+          if (analysis.exerciseName !== exerciseName) return;
 
           setExercises((prev) => {
             const updated = [...prev];
-            if (sessionIndex < 0 || sessionIndex >= updated.length) return prev;
-
-            if (analysis && analysis.status === 'completed' && analysis.feedback) {
-              updated[sessionIndex] = {
-                ...updated[sessionIndex],
-                status: 'analyzed',
-                score: analysis.feedback.overallScore,
-                analysisId,
-              };
-            } else if (analysis && analysis.status === 'failed') {
-              // Analysis failed — reset to pending so user can retry
-              updated[sessionIndex] = {
-                ...updated[sessionIndex],
-                status: 'pending',
-                analysisId: undefined,
-              };
-            } else {
-              // Still processing or completed without feedback — mark analyzed with available score
-              updated[sessionIndex] = {
-                ...updated[sessionIndex],
-                status: 'analyzed',
-                score: analysis?.feedback?.overallScore ?? null,
-                analysisId,
-              };
-            }
+            updated[recordingIdx] = {
+              ...updated[recordingIdx],
+              status: 'analyzed',
+              score: analysis.feedback?.overallScore ?? null,
+              analysisId: analysis.analysisId,
+            };
             return updated;
           });
         } catch (error) {
-          console.error('[Session] Failed to check pending analysis:', error);
+          console.error('[Session] Failed to fetch analysis result:', error);
         }
       };
 
-      checkPendingAnalysis();
-    }, [])
+      checkForResult();
+    }, [uid, params.routineId, exercises])
   );
 
   const handleAnalyze = async () => {
-    // Gate: if no active subscription, redirect to paywall
-    // TODO: Re-enable after RevenueCat is configured
     if (!hasActiveSubscription()) {
       console.log('[DEBUG] Subscription check failed, allowing for testing');
     }
@@ -146,14 +123,13 @@ export default function RoutineSessionScreen() {
         return;
       }
 
-      // ── Bug 2 fix: mark as 'recording' (in-progress), NOT 'analyzed' with hardcoded score ──
+      // ── Bug 2 fix: mark as 'recording', not 'analyzed' with hardcoded score ──
       setExercises((prev) => {
         const updated = [...prev];
         updated[currentIndex] = { ...updated[currentIndex], status: 'recording' };
         return updated;
       });
 
-      // Navigate to loading screen
       router.push({
         pathname: '/analysis/loading',
         params: {
@@ -168,8 +144,6 @@ export default function RoutineSessionScreen() {
   };
 
   const handleRecord = async () => {
-    // Gate: if no active subscription, redirect to paywall
-    // TODO: Re-enable after RevenueCat is configured
     if (!hasActiveSubscription()) {
       console.log('[DEBUG] Subscription check failed, allowing for testing');
     }
@@ -192,7 +166,7 @@ export default function RoutineSessionScreen() {
         return;
       }
 
-      // ── Bug 2 fix: mark as 'recording' (in-progress), NOT 'analyzed' with hardcoded score ──
+      // ── Bug 2 fix: mark as 'recording', not 'analyzed' with hardcoded score ──
       setExercises((prev) => {
         const updated = [...prev];
         updated[currentIndex] = { ...updated[currentIndex], status: 'recording' };
@@ -421,7 +395,6 @@ const styles = StyleSheet.create({
   exercisePillSkipped: { opacity: 0.5 },
   exercisePillText: { fontSize: 13, color: Colors.textSecondary },
   exercisePillTextActive: { color: Colors.primary, fontWeight: '600' },
-  // Summary
   summaryContent: { paddingHorizontal: 20, paddingTop: 40, paddingBottom: 40, alignItems: 'center' },
   summaryTitle: { fontSize: 28, fontWeight: '800', color: Colors.text, marginBottom: 8 },
   routineName: { fontSize: 16, color: Colors.textSecondary, marginBottom: 32 },

@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/Colors';
 import { useAuthStore } from '@/stores/authStore';
 import { auth } from '@/lib/firebase';
@@ -73,18 +72,6 @@ export default function AnalysisLoadingScreen() {
             }).start();
           },
         );
-
-        // If this analysis came from a routine session, save the analysisId
-        // so session.tsx can pick it up when it regains focus
-        if (params.source === 'routine' && params.sessionIndex) {
-          await AsyncStorage.setItem(
-            'pending_routine_analysis',
-            JSON.stringify({
-              analysisId: result.analysisId,
-              sessionIndex: parseInt(params.sessionIndex, 10),
-            }),
-          );
-        }
 
         // Success — navigate to feedback
         Animated.timing(progressAnim, { toValue: 1, duration: 300, useNativeDriver: false }).start(() => {

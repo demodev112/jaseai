@@ -251,3 +251,27 @@ export const getUserAnalyses = getRecentAnalyses;
 export const getUserRoutines = getRoutines;
 export const getAnalysis = getAnalysisById;
 export const deleteUserAccount = deleteUserData;
+
+// ─── Routine session helper ────────────────────────────
+export async function getLatestRoutineAnalysis(
+  uid: string,
+  routineId: string,
+): Promise<Analysis | null> {
+  const q = query(
+    collection(db, 'analyses'),
+    where('uid', '==', uid),
+    where('source', '==', 'routine'),
+    where('routineId', '==', routineId),
+    where('status', '==', 'completed'),
+    orderBy('createdAt', 'desc'),
+    limit(1),
+  );
+  const snap = await getDocsWithTimeout(q);
+  if (snap.empty) return null;
+  const data = snap.docs[0].data();
+  return {
+    ...data,
+    analysisId: snap.docs[0].id,
+    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
+  } as Analysis;
+}
