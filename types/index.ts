@@ -8,7 +8,7 @@ export interface User {
   username: string;
   displayName?: string;
   email?: string;
-  authProvider?: 'google' | 'apple' | 'kakao';
+  authProvider?: 'google' | 'apple';
   stats: {
     analysesCompleted: number;
     routineCount: number;

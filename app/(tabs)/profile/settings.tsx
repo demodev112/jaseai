@@ -108,7 +108,7 @@ export default function SettingsScreen() {
           <View style={styles.settingRow}>
             <Text style={styles.settingLabel}>로그인 방법</Text>
             <Text style={styles.settingValue}>
-              {auth.currentUser?.providerData?.[0]?.providerId === 'google.com' ? 'Google' : auth.currentUser?.providerData?.[0]?.providerId === 'apple.com' ? 'Apple' : 'Kakao'}
+              {auth.currentUser?.providerData?.[0]?.providerId === 'google.com' ? 'Google' : auth.currentUser?.providerData?.[0]?.providerId === 'apple.com' ? 'Apple' : '-'}
             </Text>
           </View>
         </View>

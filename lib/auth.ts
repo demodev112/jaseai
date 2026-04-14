@@ -1,17 +1,13 @@
 /**
  * Authentication Service
  *
- * Handles Google, Apple, and Kakao login flows.
- *
- * Google & Apple: Use Firebase's built-in providers
- * Kakao: Uses OAuth web flow → Cloud Function mints a Firebase Custom Token
+ * Handles Google and Apple login flows using Firebase Auth.
  */
 
 import {
   GoogleAuthProvider,
   OAuthProvider,
   signInWithCredential,
-  signInWithCustomToken,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -22,10 +18,7 @@ import type { User } from '@/types';
 
 /**
  * Sign in with Google.
- * In production, this uses expo-auth-session to get the Google ID token,
- * then creates a Firebase credential.
- *
- * @param idToken - Google ID token from expo-auth-session
+ * @param idToken - Google ID token from @react-native-google-signin
  */
 export async function signInWithGoogle(idToken: string): Promise<void> {
   const credential = GoogleAuthProvider.credential(idToken);
@@ -37,8 +30,6 @@ export async function signInWithGoogle(idToken: string): Promise<void> {
 
 /**
  * Sign in with Apple.
- * Uses expo-apple-authentication to get the identity token.
- *
  * @param identityToken - Apple identity token
  * @param nonce - The raw nonce used in the Apple auth request
  */
@@ -53,41 +44,6 @@ export async function signInWithApple(
   });
   const result = await signInWithCredential(auth, credential);
   await ensureUserDocument(result.user.uid, result.user.displayName);
-}
-
-// ─── Kakao Login ───────────────────────────────────────────
-
-/**
- * Sign in with Kakao.
- * Flow:
- * 1. App opens Kakao OAuth in a web browser (expo-auth-session)
- * 2. User authorizes → Kakao returns an authorization code
- * 3. App sends the code to our Cloud Function
- * 4. Cloud Function exchanges code for Kakao access token,
- *    fetches user info, creates Firebase Custom Token
- * 5. App signs in with the custom token
- *
- * @param kakaoAuthCode - Authorization code from Kakao OAuth
- */
-export async function signInWithKakao(kakaoAuthCode: string): Promise<void> {
-  // Call our Cloud Function to exchange code for Firebase custom token
-  const response = await fetch(
-    // TODO: Replace with actual Cloud Function URL after deployment
-    'https://us-central1-formai-493012.cloudfunctions.net/kakaoAuth',
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: kakaoAuthCode }),
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error('카카오 로그인에 실패했습니다.');
-  }
-
-  const { customToken } = await response.json();
-  const result = await signInWithCustomToken(auth, customToken);
-  await ensureUserDocument(result.user.uid, null);
 }
 
 // ─── Sign Out ──────────────────────────────────────────────

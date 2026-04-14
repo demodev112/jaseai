@@ -50,7 +50,7 @@ export async function createUserDocument(
     username: string;
     displayName?: string;
     email?: string;
-    authProvider?: 'google' | 'apple' | 'kakao';
+    authProvider?: 'google' | 'apple';
   },
 ): Promise<void> {
   const userRef = doc(db, 'users', uid);
