@@ -213,7 +213,7 @@ export default function RoutineSessionScreen() {
       '루틴 세션을 종료하시겠어요?',
       [
         { text: '계속하기', style: 'cancel' },
-        { text: '종료', style: 'destructive', onPress: () => { router.dismiss(); router.navigate('/(tabs)/home'); } },
+        { text: '종료', style: 'destructive', onPress: () => router.replace('/(tabs)/routines') },
       ]
     );
   };
@@ -264,7 +264,7 @@ export default function RoutineSessionScreen() {
             </View>
           ))}
 
-          <TouchableOpacity style={styles.doneButton} onPress={() => { router.dismiss(); router.navigate('/(tabs)/home'); }} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.doneButton} onPress={() => router.replace('/(tabs)/routines')} activeOpacity={0.8}>
             <Text style={styles.doneButtonText}>홈으로 돌아가기</Text>
           </TouchableOpacity>
         </ScrollView>
