@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,17 +8,20 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/Colors';
 import { useAuthStore } from '@/stores/authStore';
+import { getAnalysisById } from '@/lib/firestore';
 
-type ExerciseStatus = 'pending' | 'analyzed' | 'skipped';
+type ExerciseStatus = 'pending' | 'recording' | 'analyzed' | 'skipped';
 
 interface SessionExercise {
   name: string;
   status: ExerciseStatus;
-  score?: number;
+  score?: number | null;
+  analysisId?: string;
 }
 
 export default function RoutineSessionScreen() {
@@ -28,8 +31,19 @@ export default function RoutineSessionScreen() {
     exercises: string;
   }>();
 
+  // ── Bug 1 fix: safely parse exercises that may be objects ({order, name}) or plain strings ──
   const exerciseNames: string[] = (() => {
-    try { return JSON.parse(params.exercises || '[]'); } catch { return []; }
+    try {
+      const parsed = JSON.parse(params.exercises || '[]');
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map((item: any) => {
+        if (typeof item === 'string') return item;
+        if (item && typeof item === 'object' && typeof item.name === 'string') return item.name;
+        return String(item);
+      });
+    } catch {
+      return [];
+    }
   })();
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -39,10 +53,69 @@ export default function RoutineSessionScreen() {
   const [showSummary, setShowSummary] = useState(false);
 
   const currentExercise = exercises[currentIndex];
-  const progress = exercises.filter((e) => e.status !== 'pending').length;
+  const progress = exercises.filter((e) => e.status !== 'pending' && e.status !== 'recording').length;
   const totalExercises = exercises.length;
 
   const { hasActiveSubscription } = useAuthStore();
+
+  // ── Bug 3 fix: when screen regains focus, check AsyncStorage for completed analysis ──
+  useFocusEffect(
+    useCallback(() => {
+      const checkPendingAnalysis = async () => {
+        try {
+          const raw = await AsyncStorage.getItem('pending_routine_analysis');
+          if (!raw) return;
+
+          // Remove immediately to prevent duplicate processing
+          await AsyncStorage.removeItem('pending_routine_analysis');
+
+          const { analysisId, sessionIndex } = JSON.parse(raw) as {
+            analysisId: string;
+            sessionIndex: number;
+          };
+
+          if (!analysisId || sessionIndex == null) return;
+
+          // Fetch the real analysis result from Firestore
+          const analysis = await getAnalysisById(analysisId);
+
+          setExercises((prev) => {
+            const updated = [...prev];
+            if (sessionIndex < 0 || sessionIndex >= updated.length) return prev;
+
+            if (analysis && analysis.status === 'completed' && analysis.feedback) {
+              updated[sessionIndex] = {
+                ...updated[sessionIndex],
+                status: 'analyzed',
+                score: analysis.feedback.overallScore,
+                analysisId,
+              };
+            } else if (analysis && analysis.status === 'failed') {
+              // Analysis failed — reset to pending so user can retry
+              updated[sessionIndex] = {
+                ...updated[sessionIndex],
+                status: 'pending',
+                analysisId: undefined,
+              };
+            } else {
+              // Still processing or completed without feedback — mark analyzed with available score
+              updated[sessionIndex] = {
+                ...updated[sessionIndex],
+                status: 'analyzed',
+                score: analysis?.feedback?.overallScore ?? null,
+                analysisId,
+              };
+            }
+            return updated;
+          });
+        } catch (error) {
+          console.error('[Session] Failed to check pending analysis:', error);
+        }
+      };
+
+      checkPendingAnalysis();
+    }, [])
+  );
 
   const handleAnalyze = async () => {
     // Gate: if no active subscription, redirect to paywall
@@ -72,6 +145,14 @@ export default function RoutineSessionScreen() {
         Alert.alert('영상이 너무 길어요', '60초 이하의 영상을 선택해주세요.');
         return;
       }
+
+      // ── Bug 2 fix: mark as 'recording' (in-progress), NOT 'analyzed' with hardcoded score ──
+      setExercises((prev) => {
+        const updated = [...prev];
+        updated[currentIndex] = { ...updated[currentIndex], status: 'recording' };
+        return updated;
+      });
+
       // Navigate to loading screen
       router.push({
         pathname: '/analysis/loading',
@@ -83,11 +164,6 @@ export default function RoutineSessionScreen() {
           sessionIndex: String(currentIndex),
         },
       });
-
-      // Mark as analyzed with demo score
-      const updated = [...exercises];
-      updated[currentIndex] = { ...updated[currentIndex], status: 'analyzed', score: 7 };
-      setExercises(updated);
     }
   };
 
@@ -115,6 +191,14 @@ export default function RoutineSessionScreen() {
         Alert.alert('영상이 너무 짧아요', '최소 3초 이상 촬영해주세요.');
         return;
       }
+
+      // ── Bug 2 fix: mark as 'recording' (in-progress), NOT 'analyzed' with hardcoded score ──
+      setExercises((prev) => {
+        const updated = [...prev];
+        updated[currentIndex] = { ...updated[currentIndex], status: 'recording' };
+        return updated;
+      });
+
       router.push({
         pathname: '/analysis/loading',
         params: {
@@ -125,16 +209,15 @@ export default function RoutineSessionScreen() {
           sessionIndex: String(currentIndex),
         },
       });
-      const updated = [...exercises];
-      updated[currentIndex] = { ...updated[currentIndex], status: 'analyzed', score: 7 };
-      setExercises(updated);
     }
   };
 
   const handleSkip = () => {
-    const updated = [...exercises];
-    updated[currentIndex] = { ...updated[currentIndex], status: 'skipped' };
-    setExercises(updated);
+    setExercises((prev) => {
+      const updated = [...prev];
+      updated[currentIndex] = { ...updated[currentIndex], status: 'skipped' };
+      return updated;
+    });
     goToNext();
   };
 
@@ -165,8 +248,9 @@ export default function RoutineSessionScreen() {
   if (showSummary) {
     const analyzed = exercises.filter((e) => e.status === 'analyzed');
     const skipped = exercises.filter((e) => e.status === 'skipped');
-    const avgScore = analyzed.length > 0
-      ? Math.round(analyzed.reduce((sum, e) => sum + (e.score || 0), 0) / analyzed.length * 10) / 10
+    const scoredExercises = analyzed.filter((e) => e.score != null && e.score > 0);
+    const avgScore = scoredExercises.length > 0
+      ? Math.round(scoredExercises.reduce((sum, e) => sum + (e.score || 0), 0) / scoredExercises.length * 10) / 10
       : 0;
 
     return (
@@ -194,10 +278,12 @@ export default function RoutineSessionScreen() {
             <View key={idx} style={styles.summaryItem}>
               <Text style={styles.summaryIndex}>{idx + 1}</Text>
               <Text style={styles.summaryExName}>{exercise.name}</Text>
-              {exercise.status === 'analyzed' ? (
+              {exercise.status === 'analyzed' && exercise.score != null ? (
                 <View style={styles.summaryScoreBadge}>
                   <Text style={styles.summaryScore}>{exercise.score}</Text>
                 </View>
+              ) : exercise.status === 'analyzed' ? (
+                <Text style={styles.summarySkipped}>분석됨</Text>
               ) : (
                 <Text style={styles.summarySkipped}>건너뜀</Text>
               )}
@@ -229,20 +315,26 @@ export default function RoutineSessionScreen() {
 
       <ScrollView contentContainerStyle={styles.exerciseContent}>
         <Text style={styles.currentLabel}>현재 운동</Text>
-        <Text style={styles.currentExerciseName}>{currentExercise.name}</Text>
+        <Text style={styles.currentExerciseName}>{currentExercise?.name}</Text>
 
-        {currentExercise.status === 'analyzed' ? (
+        {currentExercise?.status === 'analyzed' ? (
           <View style={styles.analyzedContainer}>
-            <View style={styles.analyzedBadge}>
-              <Text style={styles.analyzedScore}>{currentExercise.score}</Text>
-              <Text style={styles.analyzedLabel}>/10</Text>
-            </View>
+            {currentExercise.score != null ? (
+              <View style={styles.analyzedBadge}>
+                <Text style={styles.analyzedScore}>{currentExercise.score}</Text>
+                <Text style={styles.analyzedLabel}>/10</Text>
+              </View>
+            ) : null}
             <Text style={styles.analyzedText}>분석 완료!</Text>
             <TouchableOpacity style={styles.nextButton} onPress={handleNextExercise} activeOpacity={0.8}>
               <Text style={styles.nextButtonText}>
                 {currentIndex < totalExercises - 1 ? '다음 운동 →' : '결과 보기'}
               </Text>
             </TouchableOpacity>
+          </View>
+        ) : currentExercise?.status === 'recording' ? (
+          <View style={styles.analyzedContainer}>
+            <Text style={styles.analyzedText}>분석 중... 결과를 기다리고 있어요</Text>
           </View>
         ) : (
           <>
@@ -306,7 +398,7 @@ const styles = StyleSheet.create({
   currentLabel: { fontSize: 14, color: Colors.textSecondary, marginBottom: 8 },
   currentExerciseName: { fontSize: 28, fontWeight: '800', color: Colors.text, marginBottom: 24, textAlign: 'center' },
   tipCard: { backgroundColor: Colors.backgroundSecondary, borderRadius: 12, padding: 16, marginBottom: 24, width: '100%', borderWidth: 1, borderColor: Colors.border },
-  tipTitle: { fontSize: 15, fontWeight: '600', color: Colors.text, marginBottom: 8 },
+  tipTitle: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 8 },
   tipText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 22 },
   analyzeButton: { backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 18, width: '100%', alignItems: 'center', marginBottom: 12 },
   analyzeButtonText: { fontSize: 18, fontWeight: '700', color: Colors.textOnPrimary },

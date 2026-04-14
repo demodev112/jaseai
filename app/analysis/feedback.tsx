@@ -58,6 +58,8 @@ export default function AnalysisFeedbackScreen() {
 
   const handleDone = () => {
     if (params.source === 'routine' && params.routineId) {
+      // Go back to the session screen — session.tsx will pick up the
+      // analysisId from AsyncStorage via useFocusEffect
       router.back();
     } else {
       router.replace('/(tabs)/home');
@@ -107,7 +109,7 @@ export default function AnalysisFeedbackScreen() {
               </View>
             ))}
           </View>
-          <TouchableOpacity style={styles.retryButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.retryButton} onPress={handleDone}>
             <Text style={styles.retryButtonText}>다시 촬영하기</Text>
           </TouchableOpacity>
           <Text style={styles.noChargeText}>이 분석은 일일 횟수에 포함되지 않았어요.</Text>
