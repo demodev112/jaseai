@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import Colors from '@/constants/Colors';
 import { signInWithApple, signInWithGoogle } from '@/lib/auth';
 import { getUserFriendlyError } from '@/lib/errors';
@@ -20,19 +21,16 @@ type AuthProvider = 'google' | 'apple' | 'kakao';
 // ─── Nonce helpers for Apple Sign-In ────────────────────
 function generateRandomString(length: number): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  const array = new Uint8Array(length);
-  crypto.getRandomValues(array);
+  const array = Crypto.getRandomBytes(length);
   return Array.from(array, (byte) => chars[byte % chars.length]).join('');
 }
 
 async function sha256(input: string): Promise<string> {
-  // Use Web Crypto API (available in Hermes / React Native)
-  const encoder = new TextEncoder();
-  const data = encoder.encode(input);
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+  // Use expo-crypto (Web Crypto API is NOT available in React Native Hermes)
+  return await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    input
+  );
 }
 
 export default function LoginScreen() {
