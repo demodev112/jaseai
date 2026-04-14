@@ -13,6 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Colors from '@/constants/Colors';
 import { useAuthStore } from '@/stores/authStore';
+import { updateUsername } from '@/lib/auth';
+import { auth } from '@/lib/firebase';
 
 export default function NameSetupScreen() {
   const [name, setName] = useState('');
@@ -25,8 +27,13 @@ export default function NameSetupScreen() {
 
     setIsSubmitting(true);
     try {
-      // TODO: Save name to Firestore user document
-      // await updateDoc(doc(db, 'users', user.uid), { displayName: name.trim() });
+      // Save name to Firestore user document
+      const uid = auth.currentUser?.uid;
+      if (!uid) {
+        Alert.alert('오류', '로그인 정보를 찾을 수 없습니다. 앱을 다시 시작해주세요.');
+        return;
+      }
+      await updateUsername(uid, name.trim());
 
       // Navigate to first routine creation
       router.replace('/(auth)/first-routine');

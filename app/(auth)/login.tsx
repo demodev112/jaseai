@@ -6,37 +6,139 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import Colors from '@/constants/Colors';
+import { signInWithApple, signInWithGoogle } from '@/lib/auth';
 import { getUserFriendlyError } from '@/lib/errors';
 
 type AuthProvider = 'google' | 'apple' | 'kakao';
 
+// ─── Nonce helpers for Apple Sign-In ────────────────────
+function generateRandomString(length: number): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  return Array.from(array, (byte) => chars[byte % chars.length]).join('');
+}
+
+async function sha256(input: string): Promise<string> {
+  // Use Web Crypto API (available in Hermes / React Native)
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState<AuthProvider | null>(null);
 
-  const handleLogin = async (provider: AuthProvider) => {
-    setIsLoading(provider);
-
+  // ─── Apple Sign-In ──────────────────────────────────
+  const handleAppleLogin = async () => {
+    setIsLoading('apple');
     try {
-      // TODO: Implement actual auth logic in Phase 2 service layer
-      // For now, simulate a login delay and navigate forward
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // 1. Generate a random nonce and hash it
+      const rawNonce = generateRandomString(32);
+      const hashedNonce = await sha256(rawNonce);
 
-      // Navigate to name setup (for new users) or main app (for returning users)
-      router.replace('/(auth)/name-setup');
+      // 2. Request Apple Sign-In with the hashed nonce
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+        nonce: hashedNonce,
+      });
+
+      // 3. Ensure we got an identity token
+      if (!credential.identityToken) {
+        throw new Error('Apple Sign-In failed: no identity token returned');
+      }
+
+      // 4. Sign in to Firebase with the Apple credential
+      await signInWithApple(credential.identityToken, rawNonce);
+
+      // 5. Navigate to root — index.tsx will handle routing
+      //    (checks username → name-setup or tabs)
+      router.replace('/');
     } catch (error: any) {
-      // User cancelled login — don't show error
-      if (error?.code === 'ERR_CANCELED' || error?.message?.includes('cancel')) {
+      if (error?.code === 'ERR_REQUEST_CANCELED') {
+        // User cancelled — don't show error
         return;
       }
+      console.error('Apple Sign-In error:', error);
       const { title, message } = getUserFriendlyError(error);
       Alert.alert(title, message, [{ text: '확인' }]);
     } finally {
       setIsLoading(null);
+    }
+  };
+
+  // ─── Google Sign-In ─────────────────────────────────
+  const handleGoogleLogin = async () => {
+    setIsLoading('google');
+    try {
+      // Import dynamically to avoid crashes if not configured
+      const { GoogleSignin } = require('@react-native-google-signin/google-signin');
+
+      // Check if Google Play Services are available (Android only)
+      if (Platform.OS === 'android') {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      }
+
+      // Sign in with Google
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = userInfo?.data?.idToken || userInfo?.idToken;
+
+      if (!idToken) {
+        throw new Error('Google Sign-In failed: no ID token returned');
+      }
+
+      // Sign in to Firebase with the Google credential
+      await signInWithGoogle(idToken);
+
+      // Navigate to root — index.tsx will handle routing
+      router.replace('/');
+    } catch (error: any) {
+      if (
+        error?.code === 'SIGN_IN_CANCELLED' ||
+        error?.code === '12501' ||
+        error?.message?.includes('cancel')
+      ) {
+        // User cancelled — don't show error
+        return;
+      }
+      console.error('Google Sign-In error:', error);
+      const { title, message } = getUserFriendlyError(error);
+      Alert.alert(title, message, [{ text: '확인' }]);
+    } finally {
+      setIsLoading(null);
+    }
+  };
+
+  // ─── Kakao Sign-In ──────────────────────────────────
+  const handleKakaoLogin = async () => {
+    Alert.alert(
+      '준비 중',
+      '카카오 로그인은 곧 지원될 예정입니다.\n다른 로그인 방법을 이용해주세요.',
+      [{ text: '확인' }],
+    );
+  };
+
+  // ─── Route to correct handler ───────────────────────
+  const handleLogin = async (provider: AuthProvider) => {
+    switch (provider) {
+      case 'apple':
+        return handleAppleLogin();
+      case 'google':
+        return handleGoogleLogin();
+      case 'kakao':
+        return handleKakaoLogin();
     }
   };
 
