@@ -109,7 +109,7 @@ export default function RoutineSessionScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['videos'],
       quality: 0.7,
-      videoMaxDuration: 60,
+      videoMaxDuration: 30,
     });
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
@@ -156,7 +156,7 @@ export default function RoutineSessionScreen() {
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ['videos'],
       quality: 0.7,
-      videoMaxDuration: 60,
+      videoMaxDuration: 30,
     });
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];

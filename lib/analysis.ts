@@ -17,7 +17,6 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import { storage, functions } from '@/lib/firebase';
 import type { AnalysisFeedback } from '@/types';
-import { Video } from 'react-native-compressor';
 import * as FileSystem from 'expo-file-system';
 
 // ─── Types ──────────────────────────────────────────────
@@ -47,30 +46,7 @@ export async function submitAnalysis(
   request: AnalysisRequest,
   onProgress?: ProgressCallback,
 ): Promise<AnalysisResult> {
-  // Phase 1: Compress video
-  onProgress?.({
-    phase: 'compressing',
-    progress: 10,
-    message: '영상을 최적화하고 있어요...',
-  });
-
-  // Compress video to reduce upload size and Cloud Function memory usage
-  let compressedUri: string;
-  try {
-    compressedUri = await Video.compress(request.videoUri, {
-      compressionMethod: 'auto',
-      maxSize: 720,
-    });
-  } catch (compressError) {
-    console.warn('Video compression failed, using original:', compressError);
-    compressedUri = request.videoUri;
-  }
-
-  onProgress?.({
-    phase: 'compressing',
-    progress: 30,
-    message: '영상 최적화 완료!',
-  });
+  const compressedUri = request.videoUri;
 
   // Phase 2: Upload to Firebase Storage
   const timestamp = Date.now();
