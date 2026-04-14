@@ -1,41 +1,14 @@
 import { useEffect } from 'react';
 import { Stack, router } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { useFonts } from 'expo-font';
-import * as SplashScreen from 'expo-splash-screen';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { onAuthStateChanged } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '@/lib/firebase';
 import { useAuthStore } from '@/stores/authStore';
 import { checkOnboardingStatus } from '@/lib/auth';
-import Colors from '@/constants/Colors';
 import type { User } from '@/types';
-
-export {
-  ErrorBoundary,
-} from 'expo-router';
-
-// Prevent the splash screen from auto-hiding before asset loading is complete
-SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { setUser, setLoading } = useAuthStore();
-
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    ...FontAwesome.font,
-  });
-
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -75,39 +48,13 @@ export default function RootLayout() {
     return unsubscribe;
   }, []);
 
-  if (!loaded) {
-    return null;
-  }
-
   return (
-    <>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: Colors.background },
-          animation: 'slide_from_right',
-        }}
-      >
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen
-          name="analysis/loading"
-          options={{ presentation: 'modal', gestureEnabled: false }}
-        />
-        <Stack.Screen
-          name="analysis/feedback"
-          options={{ presentation: 'modal' }}
-        />
-        <Stack.Screen
-          name="analysis/detail"
-          options={{ presentation: 'card' }}
-        />
-        <Stack.Screen name="paywall" />
-        <Stack.Screen name="terms" />
-        <Stack.Screen name="privacy" />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-    </>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="paywall" />
+      <Stack.Screen name="terms" />
+      <Stack.Screen name="privacy" />
+    </Stack>
   );
 }
