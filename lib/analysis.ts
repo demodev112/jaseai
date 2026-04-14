@@ -87,10 +87,7 @@ export async function submitAnalysis(
   const base64Data = await FileSystem.readAsStringAsync(compressedUri, {
     encoding: FileSystem.EncodingType.Base64,
   });
-  const binaryString = globalThis.Buffer
-  ? Buffer.from(base64Data, 'base64')
-  : Uint8Array.from(base64Data.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)));
-const byteArray = new Uint8Array(Buffer.from(base64Data, 'base64'));
+  const byteArray = new Uint8Array(Buffer.from(base64Data, 'base64'));
 
   // Upload with retry logic for iOS storage/unknown errors
   const maxRetries = 2;
