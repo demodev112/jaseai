@@ -12,11 +12,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import Colors from '@/constants/Colors';
 import { signInWithApple, signInWithGoogle } from '@/lib/auth';
 import { getUserFriendlyError } from '@/lib/errors';
 
-type AuthProvider = 'google' | 'apple' | 'kakao';
+type AuthProvider = 'google' | 'apple';
+
+// ─── Configure Google Sign-In ─────────────────────────────
+GoogleSignin.configure({
+  webClientId: '10201445254-8q6mbf4i65cbolk1v6aesspefnspf3hn.apps.googleusercontent.com',
+  iosClientId: '10201445254-k81hjurq33lluqmavi0ie93ojj0qnj88.apps.googleusercontent.com',
+});
 
 // ─── Nonce helpers for Apple Sign-In ────────────────────
 function generateRandomString(length: number): string {
@@ -81,9 +88,6 @@ export default function LoginScreen() {
   const handleGoogleLogin = async () => {
     setIsLoading('google');
     try {
-      // Import dynamically to avoid crashes if not configured
-      const { GoogleSignin } = require('@react-native-google-signin/google-signin');
-
       // Check if Google Play Services are available (Android only)
       if (Platform.OS === 'android') {
         await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
@@ -91,7 +95,7 @@ export default function LoginScreen() {
 
       // Sign in with Google
       const userInfo = await GoogleSignin.signIn();
-      const idToken = userInfo?.data?.idToken || userInfo?.idToken;
+      const idToken = userInfo?.data?.idToken || (userInfo as any)?.idToken;
 
       if (!idToken) {
         throw new Error('Google Sign-In failed: no ID token returned');
@@ -119,15 +123,6 @@ export default function LoginScreen() {
     }
   };
 
-  // ─── Kakao Sign-In ──────────────────────────────────
-  const handleKakaoLogin = async () => {
-    Alert.alert(
-      '준비 중',
-      '카카오 로그인은 곧 지원될 예정입니다.\n다른 로그인 방법을 이용해주세요.',
-      [{ text: '확인' }],
-    );
-  };
-
   // ─── Route to correct handler ───────────────────────
   const handleLogin = async (provider: AuthProvider) => {
     switch (provider) {
@@ -135,8 +130,6 @@ export default function LoginScreen() {
         return handleAppleLogin();
       case 'google':
         return handleGoogleLogin();
-      case 'kakao':
-        return handleKakaoLogin();
     }
   };
 
@@ -190,23 +183,6 @@ export default function LoginScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Kakao */}
-          <TouchableOpacity
-            style={[styles.socialButton, styles.kakaoButton]}
-            onPress={() => handleLogin('kakao')}
-            disabled={isLoading !== null}
-          >
-            {isLoading === 'kakao' ? (
-              <ActivityIndicator color="#3C1E1E" />
-            ) : (
-              <>
-                <Text style={styles.kakaoIcon}>💬</Text>
-                <Text style={[styles.socialButtonText, styles.kakaoText]}>
-                  카카오로 계속하기
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
         </View>
 
         {/* Terms */}
@@ -299,16 +275,6 @@ const styles = StyleSheet.create({
   },
   googleText: {
     color: '#333',
-  },
-  // Kakao
-  kakaoButton: {
-    backgroundColor: '#FEE500',
-  },
-  kakaoIcon: {
-    fontSize: 16,
-  },
-  kakaoText: {
-    color: '#3C1E1E',
   },
   termsArea: {
     marginTop: 32,
