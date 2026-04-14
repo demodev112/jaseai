@@ -16,6 +16,7 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import { storage, functions } from '@/lib/firebase';
 import type { AnalysisFeedback } from '@/types';
+import { Video } from 'react-native-compressor';
 
 // ─── Types ──────────────────────────────────────────────
 export interface AnalysisRequest {
@@ -51,12 +52,17 @@ export async function submitAnalysis(
     message: '영상을 최적화하고 있어요...',
   });
 
-  // In production, use react-native-compressor here:
-  // const compressedUri = await Video.compress(request.videoUri, {
-  //   compressionMethod: 'auto',
-  //   maxSize: 720,
-  // });
-  const compressedUri = request.videoUri; // Placeholder until compressor is added
+  // Compress video to reduce upload size and Cloud Function memory usage
+  let compressedUri: string;
+  try {
+    compressedUri = await Video.compress(request.videoUri, {
+      compressionMethod: 'auto',
+      maxSize: 720,
+    });
+  } catch (compressError) {
+    console.warn('Video compression failed, using original:', compressError);
+    compressedUri = request.videoUri;
+  }
 
   onProgress?.({
     phase: 'compressing',
@@ -125,7 +131,7 @@ export async function submitAnalysis(
       routineId?: string;
     },
     AnalysisResult
-  >(functions, 'analyzeVideo');
+  >(functions, 'analyzeVideo', { timeout: 120_000 });
 
   const result = await analyzeVideoFn({
     exerciseName: request.exerciseName,

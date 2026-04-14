@@ -37,7 +37,18 @@ export default function AnalysisLoadingScreen() {
     hasStarted.current = true;
 
     const runAnalysis = async () => {
-      if (!uid || !params.videoUri || !params.exerciseName) {
+      // Wait for auth state to propagate if uid is not yet available
+      let resolvedUid = uid;
+      if (!resolvedUid) {
+        await new Promise((r) => setTimeout(r, 500));
+        resolvedUid = useAuthStore.getState().user?.uid || auth.currentUser?.uid;
+      }
+      if (!resolvedUid) {
+        await new Promise((r) => setTimeout(r, 1000));
+        resolvedUid = useAuthStore.getState().user?.uid || auth.currentUser?.uid;
+      }
+
+      if (!resolvedUid || !params.videoUri || !params.exerciseName) {
         Alert.alert('오류', '필요한 정보가 없습니다.');
         router.back();
         return;
@@ -45,7 +56,7 @@ export default function AnalysisLoadingScreen() {
 
       try {
         const result = await submitAnalysis(
-          uid,
+          resolvedUid,
           {
             exerciseName: params.exerciseName,
             videoUri: params.videoUri,

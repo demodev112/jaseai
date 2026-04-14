@@ -4,7 +4,6 @@
  * Main entry point for all server-side logic:
  * 1. analyzeVideo — Callable function: uploads video to Gemini, returns feedback
  * 2. resetDailyUsage — Scheduled function: resets daily analysis counts at midnight KST
- * 3. createKakaoToken — Callable function: creates Firebase custom token for Kakao login
  */
 
 import * as admin from 'firebase-admin';
@@ -77,8 +76,9 @@ const JSON_SCHEMA = `{
 export const analyzeVideo = onCall(
   {
     region: 'asia-northeast3',
-    memory: '512MiB',
+    memory: '2GiB',
     timeoutSeconds: 120,
+    minInstances: 1,
     secrets: [geminiApiKey],
     enforceAppCheck: false,
   },
@@ -273,37 +273,6 @@ export const resetDailyUsage = onSchedule(
   }
 );
 
-// ─── createKakaoToken ───────────────────────────────────
-// Creates a Firebase custom token for Kakao-authenticated users
-export const createKakaoToken = onCall(
-  {
-    region: 'asia-northeast3',
-  },
-  async (request) => {
-    const { kakaoUid, email, displayName } = request.data;
-
-    if (!kakaoUid) {
-      throw new HttpsError('invalid-argument', '카카오 UID가 필요합니다.');
-    }
-
-    const firebaseUid = `kakao:${kakaoUid}`;
-
-    try {
-      // Try to get existing user
-      await admin.auth().getUser(firebaseUid);
-    } catch {
-      // Create new user if doesn't exist
-      await admin.auth().createUser({
-        uid: firebaseUid,
-        email: email || undefined,
-        displayName: displayName || undefined,
-      });
-    }
-
-    const customToken = await admin.auth().createCustomToken(firebaseUid);
-    return { token: customToken };
-  }
-);
 
 // ─── Helper Functions ───────────────────────────────────
 function formatDateKST(date: Date): string {
