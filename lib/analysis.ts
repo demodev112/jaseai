@@ -11,12 +11,14 @@
 import {
   ref,
   uploadBytesResumable,
+  uploadBytes,
   UploadTask,
 } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { storage, functions } from '@/lib/firebase';
 import type { AnalysisFeedback } from '@/types';
 import { Video } from 'react-native-compressor';
+import * as FileSystem from 'expo-file-system';
 
 // ─── Types ──────────────────────────────────────────────
 export interface AnalysisRequest {
@@ -81,34 +83,52 @@ export async function submitAnalysis(
     message: '영상을 업로드하고 있어요...',
   });
 
-  // Fetch the video file as a blob
-  const response = await fetch(compressedUri);
-  const blob = await response.blob();
-
-  // Upload with progress tracking
-  await new Promise<void>((resolve, reject) => {
-    const uploadTask: UploadTask = uploadBytesResumable(storageRef, blob);
-
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const uploadPercent = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        // Map upload progress to 35-70% of total progress
-        const totalProgress = 35 + (uploadPercent * 0.35);
-        onProgress?.({
-          phase: 'uploading',
-          progress: Math.round(totalProgress),
-          message: `영상 업로드 중... ${Math.round(uploadPercent)}%`,
-        });
-      },
-      (error) => {
-        reject(new Error(`업로드 실패: ${error.message}`));
-      },
-      () => {
-        resolve();
-      },
-    );
+  // Read video file as base64 using expo-file-system (more reliable on iOS than fetch blob)
+  const base64Data = await FileSystem.readAsStringAsync(compressedUri, {
+    encoding: FileSystem.EncodingType.Base64,
   });
+  const byteArray = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
+
+  // Upload with retry logic for iOS storage/unknown errors
+  const maxRetries = 2;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const uploadTask: UploadTask = uploadBytesResumable(
+          storageRef,
+          byteArray,
+          { contentType: 'video/mp4' },
+        );
+
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const uploadPercent = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            const totalProgress = 35 + (uploadPercent * 0.35);
+            onProgress?.({
+              phase: 'uploading',
+              progress: Math.round(totalProgress),
+              message: `영상 업로드 중... ${Math.round(uploadPercent)}%`,
+            });
+          },
+          (error) => {
+            reject(error);
+          },
+          () => {
+            resolve();
+          },
+        );
+      });
+      break; // Upload succeeded, exit retry loop
+    } catch (uploadError: any) {
+      if (attempt < maxRetries && uploadError?.code === 'storage/unknown') {
+        // Retry after a short delay for intermittent iOS errors
+        await new Promise((r) => setTimeout(r, 1000));
+        continue;
+      }
+      throw new Error(`업로드 실패: ${uploadError.message || uploadError}`);
+    }
+  }
 
   onProgress?.({
     phase: 'uploading',
@@ -167,12 +187,10 @@ export function isWithinDailyLimit(
   const limit = getDailyLimit(subscriptionStatus);
   if (limit === 0) return false;
 
-  const today = new Date().toLocaleDateString('ko-KR', {
-    timeZone: 'Asia/Seoul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
+  // Must match Cloud Function's formatDateKST() output: "YYYY-MM-DD"
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const today = `${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, '0')}-${String(kst.getUTCDate()).padStart(2, '0')}`;
 
   // If the date doesn't match today, the count is effectively 0
   if (dailyUsage.date !== today) return true;
