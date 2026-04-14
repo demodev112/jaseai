@@ -68,9 +68,7 @@ export default function LoginScreen() {
       // 4. Sign in to Firebase with the Apple credential
       await signInWithApple(credential.identityToken, rawNonce);
 
-      // 5. Navigate to root — index.tsx will handle routing
-      //    (checks username → name-setup or tabs)
-      router.replace('/');
+      // onAuthStateChanged in _layout.tsx handles routing automatically
     } catch (error: any) {
       if (error?.code === 'ERR_REQUEST_CANCELED') {
         // User cancelled — don't show error
@@ -104,8 +102,7 @@ export default function LoginScreen() {
       // Sign in to Firebase with the Google credential
       await signInWithGoogle(idToken);
 
-      // Navigate to root — index.tsx will handle routing
-      router.replace('/');
+      // onAuthStateChanged in _layout.tsx handles routing automatically
     } catch (error: any) {
       if (
         error?.code === 'SIGN_IN_CANCELLED' ||

@@ -30,7 +30,15 @@ export default function NameSetupScreen() {
       // Save name to Firestore user document
       const uid = auth.currentUser?.uid;
       if (!uid) {
-        Alert.alert('오류', '로그인 정보를 찾을 수 없습니다. 앱을 다시 시작해주세요.');
+        // Auth hasn't settled yet — wait briefly and retry
+        await new Promise(res => setTimeout(res, 500));
+        const retryUid = auth.currentUser?.uid;
+        if (!retryUid) {
+          Alert.alert('오류', '로그인 정보를 찾을 수 없습니다. 앱을 다시 시작해주세요.');
+          return;
+        }
+        await updateUsername(retryUid, name.trim());
+        router.replace('/(auth)/first-routine');
         return;
       }
       await updateUsername(uid, name.trim());

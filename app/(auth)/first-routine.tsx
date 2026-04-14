@@ -25,7 +25,7 @@ const POPULAR_EXERCISES = [
 ];
 
 export default function FirstRoutineScreen() {
-  const { user, setOnboardingComplete } = useAuthStore();
+  const { user } = useAuthStore();
   // Get uid from Firebase Auth directly as fallback (auth store may not be fully hydrated during onboarding)
   const uid = user?.uid || auth.currentUser?.uid;
   const [routineName, setRoutineName] = useState('');
@@ -55,8 +55,12 @@ export default function FirstRoutineScreen() {
     }
 
     if (!uid) {
-      Alert.alert('오류', '로그인 정보를 찾을 수 없습니다. 앱을 다시 시작해주세요.');
-      return;
+      await new Promise(res => setTimeout(res, 500));
+      const retryUid = auth.currentUser?.uid;
+      if (!retryUid) {
+        Alert.alert('오류', '로그인 정보를 찾을 수 없습니다. 앱을 다시 시작해주세요.');
+        return;
+      }
     }
 
     const name = routineName.trim() || '나의 루틴';
@@ -68,10 +72,8 @@ export default function FirstRoutineScreen() {
         order: idx,
         name: exerciseName,
       }));
-      await createRoutine(uid, name, exercises);
-
-      // Mark onboarding as complete
-      setOnboardingComplete();
+      const finalUid = uid || auth.currentUser?.uid;
+      await createRoutine(finalUid!, name, exercises);
 
       // Navigate to main app
       router.replace('/(tabs)/home');
@@ -84,8 +86,6 @@ export default function FirstRoutineScreen() {
   };
 
   const handleSkip = () => {
-    // Even if skipping, mark onboarding as complete so user isn't stuck
-    setOnboardingComplete();
     router.replace('/(tabs)/home');
   };
 

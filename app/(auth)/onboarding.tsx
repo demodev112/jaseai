@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/Colors';
 
 const { width } = Dimensions.get('window');
@@ -52,18 +53,17 @@ export default function OnboardingScreen() {
     setCurrentIndex(index);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentIndex < slides.length - 1) {
-      flatListRef.current?.scrollToIndex({
-        index: currentIndex + 1,
-        animated: true,
-      });
+      flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
     } else {
+      await AsyncStorage.setItem('onboarding_done', 'true');
       router.replace('/(auth)/login');
     }
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
+    await AsyncStorage.setItem('onboarding_done', 'true');
     router.replace('/(auth)/login');
   };
 
