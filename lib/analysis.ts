@@ -62,7 +62,7 @@ export async function submitAnalysis(
 
   // Read video file as base64 using expo-file-system (more reliable on iOS than fetch blob)
   const base64Data = await FileSystem.readAsStringAsync(compressedUri, {
-    encoding: FileSystem.EncodingType.Base64,
+    encoding: 'base64' as any,
   });
   const byteArray = new Uint8Array(Buffer.from(base64Data, 'base64'));
 
