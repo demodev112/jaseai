@@ -92,6 +92,20 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Menu items */}
+        <View style={styles.menu}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/profile/settings')}>
+            <Text style={styles.menuIcon}>⚙️</Text>
+            <Text style={styles.menuText}>설정</Text>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/paywall')}>
+            <Text style={styles.menuIcon}>💎</Text>
+            <Text style={styles.menuText}>구독 관리</Text>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Recent analyses */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -125,20 +139,6 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             ))
           )}
-        </View>
-
-        {/* Menu items */}
-        <View style={styles.menu}>
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/profile/settings')}>
-            <Text style={styles.menuIcon}>⚙️</Text>
-            <Text style={styles.menuText}>설정</Text>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/paywall')}>
-            <Text style={styles.menuIcon}>💎</Text>
-            <Text style={styles.menuText}>구독 관리</Text>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
