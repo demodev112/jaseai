@@ -197,6 +197,18 @@ export const analyzeVideo = onCall(
         throw new Error('AI 응답 형식이 올바르지 않습니다.');
       }
 
+      // 8.5 Normalize improvements — ensure every item has all required fields
+      if (Array.isArray(feedback.improvements)) {
+        feedback.improvements = feedback.improvements.map((item: any) => ({
+          issue: item.issue || item.title || item.name || '자세 개선 필요',
+          timestamp: item.timestamp || '0:00',
+          detail: item.detail || item.description || item.explanation || item.suggestion || '',
+          severity: item.severity === '주의' ? '주의' : '경미',
+        }));
+      } else {
+        feedback.improvements = [];
+      }
+
       // 9. Update analysis document with feedback
       await analysisRef.update({
         status: 'completed',

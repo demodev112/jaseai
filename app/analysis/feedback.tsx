@@ -158,8 +158,8 @@ export default function AnalysisFeedbackScreen() {
                   <Text style={[styles.severityText, { color: item.severity === '주의' ? Colors.warning : Colors.info }]}>{item.severity}</Text>
                 </View>
               </View>
-              <Text style={styles.timestamp}>⏱ {item.timestamp}</Text>
-              <Text style={styles.improvementDetail}>{item.detail}</Text>
+              {item.timestamp ? <Text style={styles.timestamp}>⏱ {item.timestamp}</Text> : null}
+              {item.detail ? <Text style={styles.improvementDetail}>{item.detail}</Text> : null}
             </View>
           ))}
         </View>
