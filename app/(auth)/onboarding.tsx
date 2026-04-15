@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -18,7 +19,7 @@ const { width } = Dimensions.get('window');
 
 interface OnboardingSlide {
   id: string;
-  emoji: string;
+  image: any;
   title: string;
   subtitle: string;
 }
@@ -26,19 +27,19 @@ interface OnboardingSlide {
 const slides: OnboardingSlide[] = [
   {
     id: '1',
-    emoji: '📹',
+    image: require('@/assets/images/onboarding/onboarding_slide1.png'),
     title: 'AI가 내 운동 자세를\n분석해드려요',
     subtitle: '운동 영상을 올리면 AI가 자세를\n정밀하게 분석하고 피드백을 제공합니다',
   },
   {
     id: '2',
-    emoji: '🎯',
+    image: require('@/assets/images/onboarding/onboarding_slide2.png'),
     title: '틀린 자세를\n정확히 짚어드려요',
     subtitle: '어떤 부분이 잘못되었는지,\n어떻게 교정해야 하는지 알려드려요',
   },
   {
     id: '3',
-    emoji: '📋',
+    image: require('@/assets/images/onboarding/onboarding_slide3.png'),
     title: '나만의 루틴으로\n체계적으로 운동하세요',
     subtitle: '루틴을 만들고 운동별로\nAI 분석을 받아보세요',
   },
@@ -69,7 +70,13 @@ export default function OnboardingScreen() {
 
   const renderSlide = ({ item }: { item: OnboardingSlide }) => (
     <View style={styles.slide}>
-      <Text style={styles.emoji}>{item.emoji}</Text>
+      <View style={styles.imageContainer}>
+        <Image
+          source={item.image}
+          style={styles.slideImage}
+          resizeMode="contain"
+        />
+      </View>
       <Text style={styles.title}>{item.title}</Text>
       <Text style={styles.subtitle}>{item.subtitle}</Text>
     </View>
@@ -143,18 +150,25 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: 32,
   },
-  emoji: {
-    fontSize: 80,
-    marginBottom: 32,
+  imageContainer: {
+    width: width - 80,
+    height: '55%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  slideImage: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
     color: Colors.text,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
     lineHeight: 34,
   },
   subtitle: {
