@@ -187,6 +187,15 @@ export const analyzeVideo = onCall(
           .replace(/```\n?/g, '')
           .trim();
         feedback = JSON.parse(cleaned);
+
+        if (feedback.improvements && Array.isArray(feedback.improvements)) {
+          feedback.improvements = feedback.improvements.map((item: any) => ({
+            issue: item.issue || item.title || item.problem || '',
+            timestamp: item.timestamp || item.time || '',
+            detail: item.detail || item.description || item.explanation || item.suggestion || item.correction || '',
+            severity: item.severity || item.level || '경미',
+          }));
+        }
       } catch (parseError) {
         console.error('Failed to parse Gemini response:', responseText);
         throw new Error('AI 응답을 처리할 수 없습니다.');
@@ -195,18 +204,6 @@ export const analyzeVideo = onCall(
       // 8. Validate required fields
       if (!feedback.videoQuality || !feedback.videoQuality.analysisConfidence) {
         throw new Error('AI 응답 형식이 올바르지 않습니다.');
-      }
-
-      // 8.5 Normalize improvements — ensure every item has all required fields
-      if (Array.isArray(feedback.improvements)) {
-        feedback.improvements = feedback.improvements.map((item: any) => ({
-          issue: item.issue || item.title || item.name || '자세 개선 필요',
-          timestamp: item.timestamp || '0:00',
-          detail: item.detail || item.description || item.explanation || item.suggestion || '',
-          severity: item.severity === '주의' ? '주의' : '경미',
-        }));
-      } else {
-        feedback.improvements = [];
       }
 
       // 9. Update analysis document with feedback

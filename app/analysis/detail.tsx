@@ -21,29 +21,14 @@ function getScoreColor(score: number): string {
 }
 
 function getRiskColor(risk: string): string {
-  switch (risk) {
-    case 'high':
-      return Colors.scoreLow;
-    case 'medium':
-      return Colors.scoreMedium;
-    case 'low':
-      return Colors.scoreHigh;
-    default:
-      return Colors.textMuted;
-  }
+  if (risk === '낮음') return Colors.scoreHigh;
+  if (risk === '보통') return Colors.scoreMedium;
+  if (risk === '높음') return Colors.scoreLow;
+  return Colors.textMuted;
 }
 
 function getRiskLabel(risk: string): string {
-  switch (risk) {
-    case 'high':
-      return '높음';
-    case 'medium':
-      return '보통';
-    case 'low':
-      return '낮음';
-    default:
-      return risk;
-  }
+  return risk || '알 수 없음';
 }
 
 function formatDate(date: any): string {
