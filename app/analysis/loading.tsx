@@ -96,7 +96,7 @@ export default function AnalysisLoadingScreen() {
             ]
           : [{ text: '확인', onPress: () => router.back() }];
 
-        Alert.alert(title, message, buttons);
+        Alert.alert(title, `${message}\n\nDebug: ${error?.message || JSON.stringify(error)}`, buttons);
       }
     };
 
