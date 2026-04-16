@@ -18,7 +18,7 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import { storage, functions } from '@/lib/firebase';
 import type { AnalysisFeedback } from '@/types';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 // ─── Types ──────────────────────────────────────────────
 export interface AnalysisRequest {
@@ -62,7 +62,7 @@ export async function submitAnalysis(
 
   // Read video file as base64 using expo-file-system (more reliable on iOS than fetch blob)
   const base64Data = await FileSystem.readAsStringAsync(compressedUri, {
-    encoding: 'base64' as any,
+    encoding: FileSystem.EncodingType.Base64,
   });
   const byteArray = new Uint8Array(Buffer.from(base64Data, 'base64'));
 
