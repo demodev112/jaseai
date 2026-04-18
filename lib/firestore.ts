@@ -25,9 +25,8 @@ import {
   type Query,
   type DocumentData,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { ref, listAll, deleteObject } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
 import type { User, Routine, RoutineExercise, Analysis } from '@/types';
 
 // ─── Timeout wrapper ───────────────────────────────────
