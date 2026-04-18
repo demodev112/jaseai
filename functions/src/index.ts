@@ -206,6 +206,9 @@ export const analyzeVideo = onCall(
         throw new Error('AI 응답 형식이 올바르지 않습니다.');
       }
 
+      // 영상 삭제
+      await file.delete();
+      
       // 9. Update analysis document with feedback
       await analysisRef.update({
         status: 'completed',
