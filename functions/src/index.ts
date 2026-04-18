@@ -259,7 +259,8 @@ export const analyzeVideo = onCall(
         status: 'failed',
         errorMessage: error.message || '알 수 없는 오류가 발생했습니다.',
       });
-
+      try { await file.delete(); } catch (_) {}
+      
       if (error instanceof HttpsError) throw error;
       throw new HttpsError('internal', error.message || 'AI 분석 중 오류가 발생했습니다.');
     }
