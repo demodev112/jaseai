@@ -26,6 +26,8 @@ import {
   type DocumentData,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { ref, listAll, deleteObject } from 'firebase/storage';
+import { storage } from '@/lib/firebase';
 import type { User, Routine, RoutineExercise, Analysis } from '@/types';
 
 // ─── Timeout wrapper ───────────────────────────────────
@@ -226,6 +228,14 @@ export function subscribeToAnalysis(
 // ─── Account Deletion ───────────────────────────────────
 
 export async function deleteUserData(uid: string): Promise<void> {
+  
+  // Delete videos from Storage
+  const folderRef = ref(storage, `videos/${uid}`);
+  const { items } = await listAll(folderRef);
+  for (const item of items) {
+    await deleteObject(item);
+  }
+  
   // Delete all routines
   const routinesSnap = await getDocsWithTimeout(
     query(collection(db, 'routines'), where('uid', '==', uid)),
